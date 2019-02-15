@@ -48,6 +48,7 @@ PORT_TCP_LDAP=389
 PORT_TCP_SQL=1433
 PORT_UDP_SQL=1434
 PORT_TCP_HTTP=80
+PORT_TCP_HTTPS=443
 PORT_TCP_SMB=445
 PORT_TCP_NETBIOS_SS=139
 PORT_TCP_FTP=21
@@ -262,6 +263,7 @@ ConnectionSetup() {
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_SQL -j DNAT --to $BRIP:$PORT_TCP_SQL
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_SQL -j DNAT --to $BRIP:$PORT_UDP_SQL
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_HTTP -j DNAT --to $BRIP:$PORT_TCP_HTTP
+        $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_HTTPS -j DNAT --to $BRIP:$PORT_TCP_HTTPS
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_SMB -j DNAT --to $BRIP:$PORT_TCP_SMB
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_NETBIOS_SS -j DNAT --to $BRIP:$PORT_TCP_NETBIOS_SS
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_FTP -j DNAT --to $BRIP:$PORT_TCP_FTP
