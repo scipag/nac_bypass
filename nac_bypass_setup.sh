@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.1"
+VERSION="0.6.2"
 
 CMD_ARPTABLES=/usr/sbin/arptables-legacy
 CMD_EBTABLES=/usr/sbin/ebtables-legacy
@@ -143,6 +143,10 @@ InitialSetup() {
     echo "net.ipv6.conf.all.disable_ipv6 = 1" > /etc/sysctl.conf
     sysctl -p
     echo "" > /etc/resolv.conf
+
+    # Stop NTP service
+    systemctl stop ntp
+    timedatectl set-ntp false
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
