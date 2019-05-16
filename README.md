@@ -16,7 +16,7 @@ For arptables, iptables and ebtables, make sure not to use Netfilter xtable tool
 The nac_bypass_setup.sh script has the following parameters:
 
 ```
-nac_bypass_setup.sh v0.6.1 usage:
+nac_bypass_setup.sh v0.6.3 usage:
     -1 <eth>    network interface plugged into switch
     -2 <eth>    network interface plugged into victim machine
     -a          autonomous mode

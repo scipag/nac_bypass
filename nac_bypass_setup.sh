@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.2"
+VERSION="0.6.3"
 
 CMD_ARPTABLES=/usr/sbin/arptables-legacy
 CMD_EBTABLES=/usr/sbin/ebtables-legacy
@@ -25,7 +25,7 @@ INP="\e[1;36m" # cyan
 
 BRINT=br0 # bridge interface
 SWINT=eth0 # network interface plugged into switch
-SWMAC=`ifconfig $SWINT | grep -i ether | awk '{ print $2 }'` # get SWINT MAC address automatically
+SWMAC=00:11:22:33:44:55 # inital value, is set during initialisation
 COMPINT=eth1 # network interface plugged into victim machine
 
 BRIP=169.254.66.66 # IP address for the bridge
@@ -140,6 +140,7 @@ InitialSetup() {
     fi
 
     systemctl stop NetworkManager.service
+    cp /etc/sysctl.conf /etc/sysctl.conf.bak
     echo "net.ipv6.conf.all.disable_ipv6 = 1" > /etc/sysctl.conf
     sysctl -p
     echo "" > /etc/resolv.conf
@@ -147,6 +148,9 @@ InitialSetup() {
     # Stop NTP service
     systemctl stop ntp
     timedatectl set-ntp false
+
+    # get SWINT MAC address automatically
+    SWMAC=`ifconfig $SWINT | grep -i ether | awk '{ print $2 }'` 
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
@@ -259,7 +263,7 @@ ConnectionSetup() {
             echo
         fi
 
-        $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_NETBIOS_NS -j DNAT --to $PORT_UDP_NETBIOS_NS
+        $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_NETBIOS_NS -j DNAT --to $BRIP:$PORT_UDP_NETBIOS_NS
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_NETBIOS_DS -j DNAT --to $BRIP:$PORT_UDP_NETBIOS_DS
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_DNS -j DNAT --to $BRIP:$PORT_UDP_DNS
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_LDAP -j DNAT --to $BRIP:$PORT_UDP_LDAP
@@ -330,8 +334,14 @@ Reset() {
 
     # Flush EB, ARP- and IPTABLES
     $CMD_EBTABLES -F
+    $CMD_EBTABLES -F -t nat
     $CMD_ARPTABLES -F
     $CMD_IPTABLES -F
+    $CMD_IPTABLES -F -t nat
+
+    # Restore sysctl.conf
+    cp /etc/sysctl.conf.bak /etc/sysctl.conf
+    rm /etc/sysctl.conf.bak
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
