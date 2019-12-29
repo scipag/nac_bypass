@@ -7,7 +7,7 @@ The basic requirement for an NAC bypass is access to a device that has already b
 
 The NACkered script and our nac_bypass_setup.sh solution were written and tested on Debian-based Linux distributions, but both should be executable on other Linux distributions as well. The following software packages are required:
 
-1. Install tools, on Debian-like distros: `bridge-utils`, `macchanger`, `arptables`, `ebtables`, `iptables`, `mii-tools` and `tcpdump`
+1. Install tools, on Debian-like distros: `bridge-utils` `macchanger` `arptables` `ebtables` `iptables` `net-tools` `tcpdump`
 2. Load kernel module: `modprobe br_netfilter`
 3. Persist kernel module: `br_netfilter`into `/etc/modules`
 
@@ -16,11 +16,12 @@ For arptables, iptables and ebtables, make sure not to use Netfilter xtable tool
 The nac_bypass_setup.sh script has the following parameters:
 
 ```
-nac_bypass_setup.sh v0.6.3 usage:
+nac_bypass_setup.sh v0.6.4 usage:
     -1 <eth>    network interface plugged into switch
     -2 <eth>    network interface plugged into victim machine
     -a          autonomous mode
     -c          start connection setup only
+    -g <MAC>    set gateway MAC address (GWMAC) manually
     -h          display this help
     -i          start initial setup only
     -r          reset all settings

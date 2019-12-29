@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.3"
+VERSION="0.6.4"
 
 CMD_ARPTABLES=/usr/sbin/arptables-legacy
 CMD_EBTABLES=/usr/sbin/ebtables-legacy
@@ -70,6 +70,7 @@ Usage() {
   echo "    -2 <eth>    network interface plugged into victim machine"
   echo "    -a          autonomous mode"
   echo "    -c          start connection setup only"
+  echo "    -g <MAC>    set gateway MAC address (GWMAC) manually"
   echo "    -h          display this help"
   echo "    -i          start initial setup only"
   echo "    -r          reset all settings"
@@ -86,7 +87,7 @@ Version() {
 
 ## Check if we got all needed parameters
 CheckParams() {
-  while getopts ":1:2:achirRS" opts
+  while getopts ":1:2:acg:hirRS" opts
     do
       case "$opts" in
         "1")
@@ -101,6 +102,9 @@ CheckParams() {
         "c")
           OPTION_CONNECTION_SETUP_ONLY=1
           ;;
+        "g")
+          GWMAC=$OPTARG
+          ;;          
         "h")
           Usage
           ;;
@@ -215,7 +219,9 @@ ConnectionSetup() {
     tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c1 tcp dst port 88 or port 445 
 
     COMPMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp dst port 88 or port 445 | awk '{print $2","$4$10}' | cut -f 1-4 -d.| awk -F ',' '{print $1}'`
-    GWMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp dst port 88 or port 445 | awk '{print $2","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $2}'`
+    if [ -z "$GWMAC" ]; then
+        GWMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp dst port 88 or port 445 | awk '{print $2","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $2}'`
+    fi
     COMIP=`tcpdump -r $TEMP_FILE -nne -c 1 tcp dst port 88 or port 445 | awk '{print $3","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $3}'`
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
