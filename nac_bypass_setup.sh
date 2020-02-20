@@ -12,9 +12,9 @@
 ## Variables
 VERSION="0.6.4"
 
-CMD_ARPTABLES=/usr/sbin/arptables-legacy
-CMD_EBTABLES=/usr/sbin/ebtables-legacy
-CMD_IPTABLES=/usr/sbin/iptables-legacy
+CMD_ARPTABLES=/usr/sbin/arptables
+CMD_EBTABLES=/usr/sbin/ebtables
+CMD_IPTABLES=/usr/sbin/iptables
 
 ## Text color variables - saves retyping these awful ANSI codes
 TXTRST="\e[0m" # Text reset
