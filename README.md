@@ -11,7 +11,7 @@ The NACkered script and our nac_bypass_setup.sh solution were written and tested
 2. Load kernel module: `modprobe br_netfilter`
 3. Persist kernel module: `br_netfilter`into `/etc/modules`
 
-For arptables, iptables and ebtables, make sure not to use Netfilter xtable tools (nft), or the script will not work as desired.
+~~For arptables, iptables and ebtables, make sure not to use Netfilter xtable tools (nft), or the script will not work as desired.~~
 
 The nac_bypass_setup.sh script has the following parameters:
 
