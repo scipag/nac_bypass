@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # -----
 # Name: nac_bypass_setup.sh
@@ -14,6 +14,8 @@ STATE_COUNTER=0
 THRESHOLD_UP=3
 THRESHOLD_DOWN=5
 TIMER="5s"
+
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 ## display usage hints
 Usage() {
@@ -51,7 +53,7 @@ CheckParams() {
 CheckParams $@
 
 ## Run Initial Configuration
-bash nac_bypass_setup.sh -a -i
+bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -i
 
 ## Loop
 while true
@@ -71,12 +73,12 @@ do
 
         if [ "$STATE_COUNTER" -eq "$THRESHOLD_UP" ] && [ "$NETWORK_STATE_INTERFACE" -eq 1 ]; then
             echo "[!!] Set new config"
-            bash nac_bypass_setup.sh -a -c
+            bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -c
  
         elif [ "$STATE_COUNTER" -eq "$THRESHOLD_DOWN" ] && [ "$NETWORK_STATE_INTERFACE" -eq 0 ]; then
             echo "[!!] Reset config"
-            bash nac_bypass_setup.sh -a -r
-            bash nac_bypass_setup.sh -a -i
+            bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -r
+            bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -i
         fi
 
         echo "[*] Waiting"
