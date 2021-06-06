@@ -15,7 +15,7 @@ The NACkered script and our nac_bypass_setup.sh solution were written and tested
 
 The nac_bypass_setup.sh script has the following parameters:
 
-```
+```bash
 nac_bypass_setup.sh v0.6.4 usage:
     -1 <eth>    network interface plugged into switch
     -2 <eth>    network interface plugged into victim machine
@@ -40,6 +40,14 @@ Once the configuration is complete, the network cables can be connected and the 
 All network traffic passes through the bridge and can be analyzed accordingly. This is done to capture Kerberos and SMB packets with tcpdump – as these are normally found in several places on a Windows network, making it possible to see the network configuration, such as the client’s IP and MAC address. This information is used to automatically configure the client side of the bridge. However, the bypass’s connection to the network remains blocked to ensure that network packets from the attacker device find their way onto the network and are detected. If packets from the attacker are sent onto the network later, an ebtables rule will overwrite the MAC address, meaning that the packets will appear as if they originated from the client. The same procedure is implemented using iptables rules at IP level, so that outgoing TCP, UDP and ICMP packets also have the same IP address as the client. Finally, the attacker is able to connect to the network and can carry out actions from their own device.
 
 If port forwarding has been enabled for SSH and Responder, the bridge forwards all requests for the respective ports to the attacker’s services. From there, a Responder instance can be run to carry out multicast poisoning and to perform authentication for protocols such as SMB, FTP, or HTTP. This instance can be reached from the network using the client’s IP address.
+
+### Responder
+
+Responder must be run on the bridge interface. To ensure that Responder uses the correct IP address for poisoning multicast, the IP address of the client should be defined with parameter `-e`.
+
+```bash
+./Responder.py -I <bridge_interface> -e <client_address> ...
+```
 
 ## Bypassing NAC in an infinite loop
 
