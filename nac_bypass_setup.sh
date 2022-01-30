@@ -25,7 +25,7 @@ INP="\e[1;36m" # cyan
 
 BRINT=br0 # bridge interface
 SWINT=eth0 # network interface plugged into switch
-SWMAC=00:11:22:33:44:55 # inital value, is set during initialisation
+SWMAC=00:11:22:33:44:55 # initial value, is set during initialisation
 COMPINT=eth1 # network interface plugged into victim machine
 
 BRIP=169.254.66.66 # IP address for the bridge
@@ -231,7 +231,7 @@ ConnectionSetup() {
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
-        echo -e "$INFO [ * ] Processing packet and setting veriables $TXTRST"
+        echo -e "$INFO [ * ] Processing packet and setting variables $TXTRST"
         echo -e "$INFO [ * ] Info: COMPMAC: $COMPMAC, GWMAC: $GWMAC, COMIP: $COMIP $TXTRST"
         echo
     fi
@@ -255,7 +255,7 @@ ConnectionSetup() {
     arp -s -i $BRINT $BRGW $GWMAC
     route add default gw $BRGW
 
-    ## SSH CALLBACK if we receieve inbound on br0 for VICTIMIP:DPORT forward to BRIP on SSH
+    ## SSH CALLBACK if we receive inbound on br0 for VICTIMIP:DPORT forward to BRIP on SSH
     if [ "$OPTION_SSH" -eq 1 ]; then
 
         if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
