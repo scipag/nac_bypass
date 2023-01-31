@@ -219,15 +219,16 @@ ConnectionSetup() {
         echo
     fi
 
-    ## We pcap any kerberos or smb traffic should be some in Windows land
-    ## Default: $TCPDUMP_PORT_1 = 88 and $TCPDUMP_PORT_2 = 445
-    tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c1 tcp dst port $TCPDUMP_PORT_1 or port $TCPDUMP_PORT_2
+    ## PCAP and look for SYN packets coming from the victim PC to get the source IP, source mac, and gateway MAC
+    # TODO: Replace this with tcp SYN OR (udp && not broadcast? need to tell whos source and whos dest)
+    # TODO: Replace with actually pulling from the source interface? 
+    tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c1 'tcp[13] & 2 != 0'
 
-    COMPMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp dst port $TCPDUMP_PORT_1 or port $TCPDUMP_PORT_2 | awk '{print $2","$4$10}' | cut -f 1-4 -d.| awk -F ',' '{print $1}'`
+    COMPMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' | cut -f 1-4 -d.| awk -F ',' '{print $1}'`
     if [ -z "$GWMAC" ]; then
-        GWMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp dst port $TCPDUMP_PORT_1 or port $TCPDUMP_PORT_2 | awk '{print $2","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $2}'`
+        GWMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $2}'`
     fi
-    COMIP=`tcpdump -r $TEMP_FILE -nne -c 1 tcp dst port $TCPDUMP_PORT_1 or port $TCPDUMP_PORT_2 | awk '{print $3","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $3}'`
+    COMIP=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $3","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $3}'`
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
@@ -237,8 +238,10 @@ ConnectionSetup() {
     fi
 
     ## Going Silent
-    $CMD_ARPTABLES -A OUTPUT -j DROP
-    $CMD_IPTABLES -A OUTPUT -j DROP
+    $CMD_ARPTABLES -A OUTPUT -o $SWINT -j DROP
+    $CMD_ARPTABLES -A OUTPUT -o $COMPINT -j DROP
+    $CMD_IPTABLES -A OUTPUT -o $COMPINT -j DROP
+    $CMD_IPTABLES -A OUTPUT -o $SWINT -j DROP
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
@@ -313,8 +316,10 @@ ConnectionSetup() {
     fi
 
     ## Re-enabling traffic flow; monitor ports for lockout
-    $CMD_ARPTABLES -D OUTPUT -j DROP
-    $CMD_IPTABLES -D OUTPUT -j DROP
+    $CMD_ARPTABLES -D OUTPUT -o $SWINT -j DROP
+    $CMD_ARPTABLES -D OUTPUT -o $COMPINT -j DROP
+    $CMD_IPTABLES -D OUTPUT -o $COMPINT -j DROP
+    $CMD_IPTABLES -D OUTPUT -o $SWINT -j DROP
 
     ## Housecleaning
     rm $TEMP_FILE
