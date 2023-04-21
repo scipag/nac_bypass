@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.4"
+VERSION="0.6.5-1682079379"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -168,7 +168,7 @@ InitialSetup() {
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
-        echo -e "$INFO [ * ] Starting Bridge configuration$TXTRST"
+        echo -e "$INFO [ * ] Starting bridge configuration$TXTRST"
         echo
     fi
 
@@ -206,7 +206,7 @@ ConnectionSetup() {
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
-        echo -e "$INFO [ * ] Resetting Connection$TXTRST"
+        echo -e "$INFO [ * ] Resetting connection$TXTRST"
         echo
     fi
 
@@ -215,7 +215,7 @@ ConnectionSetup() {
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
-        echo -e "$INFO [ * ] Listening for Traffic (Kerberos and SMB)...$TXTRST"
+        echo -e "$INFO [ * ] Listening for TCP traffic...$TXTRST"
         echo
     fi
 
