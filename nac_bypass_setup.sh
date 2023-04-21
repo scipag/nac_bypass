@@ -153,8 +153,15 @@ InitialSetup() {
     sysctl -p
     echo "" > /etc/resolv.conf
 
-    # Stop NTP service
-    systemctl stop ntp
+    # Stop NTP services
+    declare -a NTP_SERVICES=("ntp.service" "ntpsec.service" "chronyd.service")
+    for NTP_SERVICE in "${NTP_SERVICES[@]}"
+    do
+        NTP_SERVICE_STATUS=$(systemctl is-active $NTP_SERVICE)
+        if [ $NTP_SERVICE_STATUS == "active" ]; then
+            systemctl stop $NTP_SERVICE
+        fi
+    done 
     timedatectl set-ntp false
 
     # get SWINT MAC address automatically
