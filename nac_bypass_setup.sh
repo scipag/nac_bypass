@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1682079379"
+VERSION="0.6.5-1684166891"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -154,7 +154,7 @@ InitialSetup() {
     echo "" > /etc/resolv.conf
 
     # Stop NTP services
-    declare -a NTP_SERVICES=("ntp.service" "ntpsec.service" "chronyd.service")
+    declare -a NTP_SERVICES=("ntp.service" "ntpsec.service" "chronyd.service" "systemd-timesyncd.service")
     for NTP_SERVICE in "${NTP_SERVICES[@]}"
     do
         NTP_SERVICE_STATUS=$(systemctl is-active $NTP_SERVICE)
@@ -263,7 +263,7 @@ ConnectionSetup() {
 
     ## Create default routes so we can route traffic - all traffic goes to the bridge gateway and this traffic gets Layer 2 sent to GWMAC
     arp -s -i $BRINT $BRGW $GWMAC
-    route add default gw $BRGW
+    route add default gw $BRGW dev $BRINT metric 10
 
     ## SSH CALLBACK if we receive inbound on br0 for VICTIMIP:DPORT forward to BRIP on SSH
     if [ "$OPTION_SSH" -eq 1 ]; then
@@ -353,7 +353,7 @@ Reset() {
 
     ## Delete default route
     arp -d -i $BRINT $BRGW $GWMAC
-    route del default
+    route del default dev $BRINT
 
     # Flush EB, ARP- and IPTABLES
     $CMD_EBTABLES -F
@@ -365,6 +365,7 @@ Reset() {
     # Restore sysctl.conf
     cp /etc/sysctl.conf.bak /etc/sysctl.conf
     rm /etc/sysctl.conf.bak
+    sysctl -p
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
