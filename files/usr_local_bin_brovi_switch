@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# 2023-01-28 Pavel Piatruk, piatruk.by
+# vim: filetype=bash
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ID=$$
+USB_ID=$(basename $DEVPATH)
+
+{
+#set|sort
+#ls -la /sys/$DEVPATH
+
+echo bInterfaceClass on ports as follows
+grep -H . /sys$DEVPATH/1*/bInterfaceClass
+IC=$( grep -h . /sys$DEVPATH/*:1.0/bInterfaceClass )
+
+echo "got bInterfaceClass on 1st port $IC"
+echo usb_modeswitch -b $BUSNUM -g $DEVNUM -v 3566 -p 2001
+
+case $IC in
+08)
+    echo Storage MODE
+    ;;
+e0)
+    echo "Already RNDIS"
+    LOCKFILE=/var/run/brovi.$USB_ID.lock
+    if [[ -e $LOCKFILE ]]
+    then
+        LOCKFILE_AGE=$(( $(date +%s ) - $(stat  $LOCKFILE -c %Y) ))
+        echo LOCKFILE_AGE=$LOCKFILE_AGE
+    fi
+
+    if [[ -n $LOCKFILE_AGE ]] && [[ $LOCKFILE_AGE -lt  10 ]]
+    then    echo was switched VERY recently, noop
+    else
+
+    set > $LOCKFILE
+
+    CMDS=(
+        "usb_modeswitch -b $BUSNUM -g $DEVNUM -v $ID_VENDOR_ID -p $ID_MODEL_ID  -W -R  -w 400 "
+        "usb_modeswitch -b $BUSNUM -g $DEVNUM -v $ID_VENDOR_ID -p $ID_MODEL_ID  -W -R "
+    )
+
+    i=0
+
+    for CMD in "${CMDS[@]}"
+    do
+        i=$(($i+1))
+        echo "=====STEP$i, run: $CMD"
+        $CMD
+    done
+    fi
+    ;;
+ff)
+    echo Serial Port
+    ;;
+*)
+    echo Unknown mode
+    ;;
+esac
+
+} | logger -t BROVI
+
+exit 0

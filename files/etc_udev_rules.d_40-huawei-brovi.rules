@@ -1,0 +1,23 @@
+#
+# Huawei E3372-325
+#
+
+ACTION!="add", GOTO="modeswitch_rules_end"
+SUBSYSTEM!="usb", GOTO="modeswitch_rules_end"
+
+# All known install partitions are on interface 0
+ATTRS{bInterfaceNumber}!="00", GOTO="modeswitch_rules_end"
+
+# only storage class devices are handled; negative
+# filtering here would exclude some quirky devices
+ATTRS{bDeviceClass}=="e0", GOTO="modeswitch_rules_begin"
+ATTRS{bInterfaceClass}=="e0", GOTO="modeswitch_rules_begin"
+
+GOTO="modeswitch_rules_end"
+
+LABEL="modeswitch_rules_begin"
+
+# Huawei E3372-325
+ATTR{idVendor}=="3566", ATTR{idProduct}=="2001", RUN+="/usr/local/bin/brovi_switch %k %p"
+
+LABEL="modeswitch_rules_end"
