@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1684166891"
+VERSION="0.6.5-1715949302"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -99,7 +99,7 @@ CheckParams() {
           ;;
         "2")
           COMPINT=$OPTARG
-          ;;          
+          ;;
         "a")
           OPTION_AUTONOMOUS=1
           ;;
@@ -108,13 +108,13 @@ CheckParams() {
           ;;
         "g")
           GWMAC=$OPTARG
-          ;;          
+          ;;
         "h")
           Usage
           ;;
         "i")
           OPTION_INITIAL_SETUP_ONLY=1
-          ;;          
+          ;;
         "r")
           OPTION_RESET=1
           ;;
@@ -161,11 +161,11 @@ InitialSetup() {
         if [ $NTP_SERVICE_STATUS == "active" ]; then
             systemctl stop $NTP_SERVICE
         fi
-    done 
+    done
     timedatectl set-ntp false
 
     # get SWINT MAC address automatically
-    SWMAC=`ifconfig $SWINT | grep -i ether | awk '{ print $2 }'` 
+    SWMAC=`ifconfig $SWINT | grep -i ether | awk '{ print $2 }'`
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
@@ -193,7 +193,7 @@ InitialSetup() {
     macchanger -m $SWMAC $BRINT # Swap MAC of bridge to the switch side MAC
 
     ## Bringing up the Bridge
-    ifconfig $BRINT 0.0.0.0 up promisc 
+    ifconfig $BRINT 0.0.0.0 up promisc
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
@@ -217,8 +217,8 @@ ConnectionSetup() {
         echo
     fi
 
-    mii-tool -r $COMPINT
-    mii-tool -r $SWINT
+    ethtool -r $COMPINT
+    ethtool -r $SWINT
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
@@ -228,7 +228,7 @@ ConnectionSetup() {
 
     ## PCAP and look for SYN packets coming from the victim PC to get the source IP, source mac, and gateway MAC
     # TODO: Replace this with tcp SYN OR (udp && not broadcast? need to tell whos source and whos dest)
-    # TODO: Replace with actually pulling from the source interface? 
+    # TODO: Replace with actually pulling from the source interface?
     tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c1 'tcp[13] & 2 != 0'
 
     COMPMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' | cut -f 1-4 -d.| awk -F ',' '{print $1}'`
@@ -311,7 +311,7 @@ ConnectionSetup() {
     $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -p icmp -j SNAT --to $COMIP
 
     ## START SSH
-    if [ "$OPTION_SSH" -eq 1 ]; then    
+    if [ "$OPTION_SSH" -eq 1 ]; then
         systemctl start ssh.service
     fi
 
@@ -345,7 +345,7 @@ Reset() {
         echo
         echo -e "$INFO [ * ] Resetting all settings $TXTRST"
         echo
-    fi    
+    fi
 
     ## Bringing bridge down
     ifconfig $BRINT down
@@ -371,7 +371,7 @@ Reset() {
         echo
         echo -e "$SUCC [ + ] All reset steps are completed. $TXTRST"
         echo
-    fi    
+    fi
 }
 
 ## Main
