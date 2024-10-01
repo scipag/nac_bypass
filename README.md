@@ -7,7 +7,7 @@ The basic requirement for an NAC bypass is access to a device that has already b
 
 The NACkered script and our nac_bypass_setup.sh solution were written and tested on Debian-based Linux distributions, but both should be executable on other Linux distributions as well. The following software packages are required:
 
-1. Install tools, on Debian-like distros: `bridge-utils` `macchanger` `arptables` `ebtables` `iptables` `net-tools` `tcpdump`
+1. Install tools, on Debian-like distros: `bridge-utils` `ethtool` `macchanger` `arptables` `ebtables` `iptables` `net-tools` `tcpdump`
 2. Load kernel module: `modprobe br_netfilter`
 3. Persist kernel module: `br_netfilter`into `/etc/modules`
 
