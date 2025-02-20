@@ -153,6 +153,10 @@ InitialSetup() {
     sysctl -p
     echo "" > /etc/resolv.conf
 
+    # Turn off multicast to prevent initial IGMP messages
+    ip link set $SWINT multicast off
+    ip link set $COMPINT multicast off
+    
     # Stop NTP services
     declare -a NTP_SERVICES=("ntp.service" "ntpsec.service" "chronyd.service" "systemd-timesyncd.service")
     for NTP_SERVICE in "${NTP_SERVICES[@]}"
