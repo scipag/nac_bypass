@@ -262,6 +262,10 @@ ConnectionSetup() {
     ifconfig $BRINT $BRIP up promisc
 
     ## Setting up Layer 2 rewrite
+    ## If script was called with -c, we need to find the MAC of the interface towards the switch.
+    if [ "$OPTION_CONNECTION_SETUP_ONLY" -eq 1 ]; then
+        SWMAC=`ifconfig $SWINT | grep -i ether | awk '{ print $2 }'`
+    fi
     $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $SWINT -j snat --to-src $COMPMAC
     $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $BRINT -j snat --to-src $COMPMAC
 
