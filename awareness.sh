@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # -----
-# Name: nac_bypass_setup.sh
+# Name: awareness.sh
 # scip AG - Michael Schneider
 # -----
 
 ## Variables
-VERSION="0.1.0"
+VERSION="0.1.1-1746786622"
 
 INTERFACE="eth0"
 STATE_INTERFACE=0
@@ -21,7 +21,7 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 Usage() {
   echo -e "$0 v$VERSION usage:"
   echo "    -h          display this help"
-  echo "    -i <eth>    network interface plugged into switch"
+  echo "    -i <eth>    network interface plugged into docking station"
   exit 0
 }
 
