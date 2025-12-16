@@ -188,7 +188,19 @@ InitialSetup() {
     brctl addif $BRINT $SWINT # add switch side to bridge
 
     echo 8 > /sys/class/net/br0/bridge/group_fwd_mask # forward EAP packets
-    echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+    # Ensuring br_netfilter is available for bridge iptables support
+    if [ ! -d /proc/sys/net/bridge ]; then
+        echo -e "$INFO [ * ] br_netfilter not loaded, attempting to load module$TXTRST"
+        modprobe br_netfilter 2>/dev/null
+        sleep 1
+    fi
+    
+    if [ -d /proc/sys/net/bridge ]; then
+        echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
+    else
+        echo -e "$WARN [ ! ] br_netfilter not available, continuing without bridge iptables support$TXTRST"
+    fi
 
     ifconfig $COMPINT 0.0.0.0 up promisc # bring up comp interface
     ifconfig $SWINT 0.0.0.0 up promisc # bring up switch interface
