@@ -22,6 +22,8 @@ nac_bypass_setup.sh v0.6.4 usage:
     -a          autonomous mode
     -c          start connection setup only
     -g <MAC>    set gateway MAC address (GWMAC) manually
+    -t <MAC>    set target (printer or computer) MAC address (COMMAC) manually
+    -T <IP>     set target (printer or computer) IP  address (COMIP) manually
     -h          display this help
     -i          start initial setup only
     -r          reset all settings
