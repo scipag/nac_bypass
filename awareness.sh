@@ -36,14 +36,26 @@ Version() {
 
 ## Check if we got all needed parameters
 CheckParams() {
-  while getopts ":1:2:h" opts
+  while getopts ":1:2:g:t:T:hRS" opts
     do
       case "$opts" in
         "1")
           SWINT=$OPTARG
+          # --- use both this argument for current and subsequent script ---
+          passthrough_args+=("-${opts}" "${OPTARG}")
           ;;
         "2")
           COMPINT=$OPTARG
+          # --- use both this argument for current and subsequent script ---
+          passthrough_args+=("-${opts}" "${OPTARG}")
+          ;;
+        # --- Options to be passed through without parameter ---
+        R|S)
+          passthrough_args+=("-${opts}")
+          ;;
+        # --- Options to be passed through with a parameter ---
+        g|t|T)
+          passthrough_args+=("-${opts}" "${OPTARG}")
           ;;
         "h")
           Usage
@@ -59,7 +71,7 @@ CheckParams() {
 CheckParams $@
 
 ## Run Initial Configuration
-bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -i -1 $SWINT -2 $COMPINT
+bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -i "${passthrough_args[@]}"
 
 ## Loop
 while true
@@ -79,12 +91,12 @@ do
 
         if [ "$STATE_COUNTER" -eq "$THRESHOLD_UP" ] && [ "$NETWORK_STATE_INTERFACE" -eq 1 ]; then
             echo "[!!] Set new config"
-            bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -c -1 $SWINT -2 $COMPINT
+            bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -c "${passthrough_args[@]}"
  
         elif [ "$STATE_COUNTER" -eq "$THRESHOLD_DOWN" ] && [ "$NETWORK_STATE_INTERFACE" -eq 0 ]; then
             echo "[!!] Reset config"
             bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -r
-            bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -i -1 $SWINT -2 $COMPINT
+            bash "${SCRIPT_DIR}/nac_bypass_setup.sh" -a -i "${passthrough_args[@]}"
         fi
 
         echo "[*] Waiting"
