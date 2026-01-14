@@ -22,6 +22,7 @@ nac_bypass_setup.sh v0.6.4 usage:
     -a          autonomous mode
     -c          start connection setup only
     -g <MAC>    set gateway MAC address (GWMAC) manually
+    -f <RANGE>  filter out all outbound connection except on this range (cautious mode, for Red Team)
     -h          display this help
     -i          start initial setup only
     -r          reset all settings
