@@ -22,6 +22,7 @@ nac_bypass_setup.sh v0.6.4 usage:
     -a          autonomous mode
     -c          start connection setup only
     -g <MAC>    set gateway MAC address (GWMAC) manually
+    -s <IP>     set source IP address for communication with COMP. WARNING: IP must exist, for supplicant ARP request to succeed
     -h          display this help
     -i          start initial setup only
     -r          reset all settings
