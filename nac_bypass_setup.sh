@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1715949302"
+VERSION="0.6.5-1768675178"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -75,6 +75,7 @@ Usage() {
   echo "    -a          autonomous mode"
   echo "    -c          start connection setup only"
   echo "    -g <MAC>    set gateway MAC address (GWMAC) manually"
+  echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP address must exist, for supplicant ARP request to succeed"
   echo "    -h          display this help"
   echo "    -i          start initial setup only"
   echo "    -r          reset all settings"
@@ -91,7 +92,7 @@ Version() {
 
 ## Check if we got all needed parameters
 CheckParams() {
-  while getopts ":1:2:acg:hirRS" opts
+  while getopts ":1:2:acg:s:hirRS" opts
     do
       case "$opts" in
         "1")
@@ -108,6 +109,9 @@ CheckParams() {
           ;;
         "g")
           GWMAC=$OPTARG
+          ;;
+        "s")
+          TO_COMP_SOURCE_IP=$OPTARG
           ;;
         "h")
           Usage
@@ -280,6 +284,13 @@ ConnectionSetup() {
     fi
     $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $SWINT -j snat --to-src $COMPMAC
     $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $BRINT -j snat --to-src $COMPMAC
+    $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $COMPINT -j snat --to-src $GWMAC
+
+    ## Manually set MAC resolution & routing for legitimate supplicant COMP
+    if [ ! -z "$TO_COMP_SOURCE_IP" ]; then ## Only if parameter -s is used
+        arp -s -i $BRINT $COMIP $COMPMAC
+        route add -host $COMIP dev $BRINT
+    fi
 
     ## Create default routes so we can route traffic - all traffic goes to the bridge gateway and this traffic gets Layer 2 sent to GWMAC
     arp -s -i $BRINT $BRGW $GWMAC
@@ -322,6 +333,13 @@ ConnectionSetup() {
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_IMAP -j DNAT --to $BRIP:$PORT_TCP_IMAP
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p tcp --dport $PORT_TCP_PROXY -j DNAT --to $BRIP:$PORT_TCP_PROXY
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_MULTICAST -j DNAT --to $BRIP:$PORT_UDP_MULTICAST
+    fi
+
+    ## Setting up Layer 3 rewrite rules to allow to communicate with COMP (legitimate supplicant)
+    if [ ! -z "$TO_COMP_SOURCE_IP" ]; then ## Only if parameter -s is used
+        $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -d $COMIP -j SNAT -p tcp --to $TO_COMP_SOURCE_IP:$RANGE
+        $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -d $COMIP -j SNAT -p udp --to $TO_COMP_SOURCE_IP:$RANGE
+        $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -d $COMIP -j SNAT -p icmp --to $TO_COMP_SOURCE_IP
     fi
 
     # Setting up Layer 3 rewrite rules
