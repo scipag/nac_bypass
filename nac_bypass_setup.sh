@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1715949302"
+VERSION="0.6.5-1768675178"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -75,7 +75,7 @@ Usage() {
   echo "    -a          autonomous mode"
   echo "    -c          start connection setup only"
   echo "    -g <MAC>    set gateway MAC address (GWMAC) manually"
-  echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP must exist, for supplicant ARP request to succeed"
+  echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP addr must exist, for supplicant ARP request to succeed"
   echo "    -h          display this help"
   echo "    -i          start initial setup only"
   echo "    -r          reset all settings"
