@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1768675495"
+VERSION="0.6.5-1768675906"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -75,6 +75,8 @@ Usage() {
   echo "    -a          autonomous mode"
   echo "    -c          start connection setup only"
   echo "    -g <MAC>    set gateway MAC address (GWMAC) manually"
+  echo "    -t <MAC>    set target (printer or computer) MAC address (COMMAC) manually"
+  echo "    -T <IP>     set target (printer or computer) IP address (COMIP) manually"
   echo "    -f <RANGE>  filter out all outbound connection except on this range (cautious mode, for Red Team)"
   echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP address must exist, for supplicant ARP request to succeed"
   echo "    -h          display this help"
@@ -93,7 +95,7 @@ Version() {
 
 ## Check if we got all needed parameters
 CheckParams() {
-  while getopts ":1:2:acg:f:s:hirRS" opts
+  while getopts ":1:2:acg:f:s:t:T:hirRS" opts
     do
       case "$opts" in
         "1")
@@ -111,6 +113,11 @@ CheckParams() {
         "g")
           GWMAC=$OPTARG
           ;;
+        "t")
+          COMPMAC=$OPTARG
+          ;;
+        "T")
+          COMIP=$OPTARG
         "f")
           RESTRICT_TO_DEST_RANGE=$OPTARG
         "s")
@@ -252,13 +259,26 @@ ConnectionSetup() {
     ## PCAP and look for SYN packets coming from the victim PC to get the source IP, source mac, and gateway MAC
     # TODO: Replace this with tcp SYN OR (udp && not broadcast? need to tell whos source and whos dest)
     # TODO: Replace with actually pulling from the source interface?
-    tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c1 'tcp[13] & 2 != 0'
 
-    COMPMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' | cut -f 1-4 -d.| awk -F ',' '{print $1}'`
+    if [[ -n "$COMPMAC" && -n "$COMIP" && -n "$GWMAC" ]]; then
+        echo -e "$INFO [ * ] Info: COMPMAC: $COMPMAC, GWMAC: $GWMAC, COMIP: $COMIP $TXTRST"
+        echo -e "$INFO [ * ] Skip packet capture as values are manually provided $TXTRST"
+    else
+        echo -e "$INFO [ * ] Listening for TCP traffic...$TXTRST"
+        tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c1 'tcp[13] & 2 != 0'
+    fi
+
+    if [ -z "$COMPMAC" ]; then
+        COMPMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' | cut -f 1-4 -d.| awk -F ',' '{print $1}'`
+    fi
+
     if [ -z "$GWMAC" ]; then
         GWMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $2}'`
     fi
-    COMIP=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $3","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $3}'`
+
+    if [ -z "$COMIP" ]; then
+        COMIP=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $3","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $3}'`
+    fi
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
@@ -351,7 +371,7 @@ ConnectionSetup() {
     fi
 
     # Setting up Layer 3 rewrite rules
-    # Anything on any protocol leaving OS on BRINT with BRIP rewrite it to COMPIP and give it a port in the range for NAT
+    # Anything on any protocol leaving OS on BRINT with BRIP rewrite it to COMIP and give it a port in the range for NAT
     $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -p tcp -j SNAT --to $COMIP:$RANGE
     $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -p udp -j SNAT --to $COMIP:$RANGE
     $CMD_IPTABLES -t nat -A POSTROUTING -o $BRINT -s $BRIP -p icmp -j SNAT --to $COMIP

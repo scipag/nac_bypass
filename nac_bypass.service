@@ -1,0 +1,16 @@
+[Unit]
+Description=NAC Bypass Automatic
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nac_bypass_awareness.sh -1 enp2s0 -2 enp1s0
+# ExecStart=/usr/local/bin/nac_bypass_awareness.sh -1 enp2s0 -2 enp1s0 -g 01:01:01:01:01:01 -t 02:02:02:02:02:02 -T 10.1.2.3 -S
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
