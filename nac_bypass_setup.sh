@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1768675178"
+VERSION="0.6.5-1768675495"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
