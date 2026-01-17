@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1768675178"
+VERSION="0.6.5-1768675495"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -75,6 +75,7 @@ Usage() {
   echo "    -a          autonomous mode"
   echo "    -c          start connection setup only"
   echo "    -g <MAC>    set gateway MAC address (GWMAC) manually"
+  echo "    -f <RANGE>  filter out all outbound connection except on this range (cautious mode, for Red Team)"
   echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP address must exist, for supplicant ARP request to succeed"
   echo "    -h          display this help"
   echo "    -i          start initial setup only"
@@ -92,7 +93,7 @@ Version() {
 
 ## Check if we got all needed parameters
 CheckParams() {
-  while getopts ":1:2:acg:s:hirRS" opts
+  while getopts ":1:2:acg:f:s:hirRS" opts
     do
       case "$opts" in
         "1")
@@ -110,6 +111,8 @@ CheckParams() {
         "g")
           GWMAC=$OPTARG
           ;;
+        "f")
+          RESTRICT_TO_DEST_RANGE=$OPTARG
         "s")
           TO_COMP_SOURCE_IP=$OPTARG
           ;;
@@ -294,7 +297,12 @@ ConnectionSetup() {
 
     ## Create default routes so we can route traffic - all traffic goes to the bridge gateway and this traffic gets Layer 2 sent to GWMAC
     arp -s -i $BRINT $BRGW $GWMAC
-    route add default gw $BRGW dev $BRINT metric 10
+    # In case filter ou mode is spceified, we only route traffic in the defined range
+    if [ -n "$RESTRICT_TO_DEST_RANGE" ]; then
+      ip route add $RESTRICT_TO_DEST_RANGE via $BRGW dev $BRINT metric 10
+    else
+      ip route add default via $BRGW dev $BRINT metric 10
+    fi
 
     ## SSH CALLBACK if we receive inbound on br0 for VICTIMIP:DPORT forward to BRIP on SSH
     if [ "$OPTION_SSH" -eq 1 ]; then
@@ -358,6 +366,14 @@ ConnectionSetup() {
         echo
         echo -e "$SUCC [ + ] All setup steps complete; check ports are still lit and operational $TXTRST"
         echo
+    fi
+
+    ## Cautious-mode filtering rules
+    if [ -n "$RESTRICT_TO_DEST_RANGE" ]; then
+      # Allow only selected outbound traffic from your machine
+      $CMD_IPTABLES -A OUTPUT -o $BRINT -s $BRIP -d $RESTRICT_TO_DEST_RANGE -j ACCEPT
+      # Drop all the rest
+      $CMD_IPTABLES -A OUTPUT -o $BRINT -s $BRIP -j DROP
     fi
 
     ## Re-enabling traffic flow; monitor ports for lockout
