@@ -75,7 +75,7 @@ Usage() {
   echo "    -a          autonomous mode"
   echo "    -c          start connection setup only"
   echo "    -g <MAC>    set gateway MAC address (GWMAC) manually"
-  echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP addr must exist, for supplicant ARP request to succeed"
+  echo "    -s <IP>     set source IP address for communication with COMP. WARNING: IP address must exist, for supplicant ARP request to succeed"
   echo "    -h          display this help"
   echo "    -i          start initial setup only"
   echo "    -r          reset all settings"
