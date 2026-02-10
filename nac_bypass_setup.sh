@@ -118,8 +118,10 @@ CheckParams() {
           ;;
         "T")
           COMIP=$OPTARG
+          ;;
         "f")
           RESTRICT_TO_DEST_RANGE=$OPTARG
+          ;;
         "s")
           TO_COMP_SOURCE_IP=$OPTARG
           ;;
