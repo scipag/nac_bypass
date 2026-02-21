@@ -118,8 +118,10 @@ CheckParams() {
           ;;
         "T")
           COMIP=$OPTARG
+          ;;
         "f")
           RESTRICT_TO_DEST_RANGE=$OPTARG
+          ;;
         "s")
           TO_COMP_SOURCE_IP=$OPTARG
           ;;
@@ -229,7 +231,7 @@ InitialSetup() {
         echo
         echo -e "$SUCC [ + ] Bridge up, should be dark.$TXTRST"
         echo
-        echo -e "$INP [ # ] Connect Ethernet cables to adatapers...$TXTRST"
+        echo -e "$INP [ # ] Connect Ethernet cables to adapters...$TXTRST"
         echo -e "$INP [ # ] Wait for 30 seconds then press any key...$TXTRST"
         echo -e "$WARN [ ! ] Victim machine should work at this point - if not, bad times are coming - run!!$TXTRST"
         read -p " " -n1 -s
