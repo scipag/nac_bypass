@@ -10,7 +10,7 @@
 # -----
 
 ## Variables
-VERSION="0.6.5-1768675906"
+VERSION="0.6.5-1771668675"
 
 CMD_ARPTABLES=/usr/sbin/arptables
 CMD_EBTABLES=/usr/sbin/ebtables
@@ -163,10 +163,14 @@ InitialSetup() {
         echo
     fi
 
+    # Stop NetworkManager
     systemctl stop NetworkManager.service
-    cp /etc/sysctl.conf /etc/sysctl.conf.bak
-    echo "net.ipv6.conf.all.disable_ipv6 = 1" > /etc/sysctl.conf
-    sysctl -p
+    # Disable IPv6 temporarly
+    SYSCTL_SETTING_IPv6=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
+    if [ "$SYSCTL_SETTING_IPv6" -eq 0 ]; then
+        sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    fi
+    # Reset DNS resolver
     echo "" > /etc/resolv.conf
 
     # Turn off multicast to prevent initial IGMP messages
@@ -437,11 +441,6 @@ Reset() {
     $CMD_ARPTABLES -F
     $CMD_IPTABLES -F
     $CMD_IPTABLES -F -t nat
-
-    # Restore sysctl.conf
-    cp /etc/sysctl.conf.bak /etc/sysctl.conf
-    rm /etc/sysctl.conf.bak
-    sysctl -p
 
     if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
         echo
